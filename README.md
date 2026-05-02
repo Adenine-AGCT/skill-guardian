@@ -18,6 +18,14 @@ It helps you:
 
 ## Quick Start
 
+Install and run with GitHub CLI:
+
+```powershell
+gh skill install Adenine-AGCT/skill-guardian
+```
+
+Install and run from the local repository:
+
 Run a local audit directly from the repository:
 
 ```powershell
@@ -105,6 +113,12 @@ This repository also includes a publishable Agent Skill under `skills/skill-guar
 
 When triggered as a skill, it runs the same audit engine and produces a user-facing summary instead of raw machine output. The bundled skill is useful when you want the audit experience inside a skills-capable agent rather than from the CLI.
 
+Install the published skill with:
+
+```powershell
+gh skill install Adenine-AGCT/skill-guardian
+```
+
 ## Safety Model
 
 `skill-guardian` is intentionally conservative.
@@ -137,6 +151,8 @@ Then switch into the skill directory and run:
 
 ```powershell
 cd .\skills\skill-guardian
-gh skill preview
-gh skill publish
+gh skill publish --tag v0.1.1
+gh skill preview Adenine-AGCT/skill-guardian skill-guardian@v0.1.1
 ```
+
+After publishing, add a GitHub tag protection ruleset for `v*` tags in repository Settings.

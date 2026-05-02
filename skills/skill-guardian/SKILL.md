@@ -1,6 +1,7 @@
 ---
 name: skill-guardian
 description: Audit local agent skill directories, explain current version provenance, compare known GitHub upstreams, score trust and update risk, and finish with a clear recommendation about whether any local skills should be updated now.
+license: MIT
 ---
 
 # Skill Guardian

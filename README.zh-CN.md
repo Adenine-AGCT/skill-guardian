@@ -18,6 +18,14 @@
 
 ## 快速开始
 
+先通过 GitHub CLI 安装已发布的 skill：
+
+```powershell
+gh skill install Adenine-AGCT/skill-guardian
+```
+
+如果你是在本地仓库中直接运行，也可以这样开始：
+
 直接从仓库运行一次本地审查：
 
 ```powershell
@@ -105,6 +113,12 @@ python -m skill_guardian roots list
 
 当它作为 skill 被触发时，会调用同一套审查引擎，并输出适合直接阅读的结论摘要，而不是原始机器结果。也就是说，你既可以把它当作 CLI 工具使用，也可以把它安装成 skill 供支持 skills 的 agent 调用。
 
+安装已发布版本的最短命令是：
+
+```powershell
+gh skill install Adenine-AGCT/skill-guardian
+```
+
 ## 安全边界
 
 `skill-guardian` 默认采取保守策略：
@@ -135,6 +149,8 @@ python .\scripts\sync_skill_runtime.py --check
 
 ```powershell
 cd .\skills\skill-guardian
-gh skill preview
-gh skill publish
+gh skill publish --tag v0.1.1
+gh skill preview Adenine-AGCT/skill-guardian skill-guardian@v0.1.1
 ```
+
+发布完成后，建议在 GitHub 仓库 Settings 中为 `v*` 标签补充 tag protection ruleset。
