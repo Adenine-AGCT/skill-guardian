@@ -1,0 +1,39 @@
+{
+  "skills": {
+    "arxiv": {
+      "repo": "openai/skills",
+      "path": "skills/.curated/arxiv",
+      "ref": "main"
+    },
+    "doc": {
+      "repo": "openai/skills",
+      "path": "skills/.curated/doc",
+      "ref": "main"
+    },
+    "notion-research-documentation": {
+      "repo": "openai/skills",
+      "path": "skills/.curated/notion-research-documentation",
+      "ref": "main"
+    },
+    "pdf": {
+      "repo": "openai/skills",
+      "path": "skills/.curated/pdf",
+      "ref": "main"
+    },
+    "playwright": {
+      "repo": "openai/skills",
+      "path": "skills/.curated/playwright",
+      "ref": "main"
+    },
+    "research-paper-writing": {
+      "repo": "openai/skills",
+      "path": "skills/.curated/research-paper-writing",
+      "ref": "main"
+    },
+    "sora": {
+      "repo": "openai/skills",
+      "path": "skills/.curated/sora",
+      "ref": "main"
+    }
+  }
+}

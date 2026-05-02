@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Guardian"
+  short_description: "Audit agent skills and review update trust"
+  default_prompt: "Run a multi-root skill audit, explain version provenance, score update trust, and tell me whether any installed skills should be updated now."
