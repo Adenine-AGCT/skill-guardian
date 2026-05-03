@@ -300,6 +300,157 @@ class SkillGuardianTests(unittest.TestCase):
         self.assertIn("Skill Guardian 技能审计与更新治理", content)
         self.assertIn("gh skill install Adenine-AGCT/skill-guardian", content)
 
+    def test_quick_mode_keeps_lightweight_path_when_gap_is_small(self) -> None:
+        with self.make_temp_dir() as temp_dir:
+            base = Path(temp_dir)
+            root = base / "skills"
+            write_skill(root / "epsilon", name="epsilon")
+            config_path = base / "config.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "roots": [],
+                        "upstreams": {"epsilon": {"repo": "owner/repo", "path": "skills/epsilon", "ref": "main"}},
+                        "policy": "balanced",
+                        "source_allowlist": [],
+                        "source_blocklist": [],
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            lock_path = base / "skills.lock.json"
+            lock_path.write_text(
+                json.dumps(
+                    {
+                        "version": 3,
+                        "skills": {
+                            f"{str(root.resolve()).lower()}::epsilon": {
+                                "current_tag": "v1.0.0",
+                                "current_commit_date": "2026-05-01T00:00:00Z",
+                                "baseline": {"fingerprint": audit_skill_path(root / "epsilon").fingerprint},
+                                "last_remote_checked_at": "2026-05-02T00:00:00Z",
+                            }
+                        },
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            with patch(
+                "skill_guardian.runtime.inspect_remote_metadata",
+                return_value=RemoteState(
+                    latest_commit="abc123456789",
+                    latest_commit_short="abc12345",
+                    latest_commit_date="2026-05-15T00:00:00Z",
+                    latest_tag="v1.0.1",
+                ),
+            ):
+                with patch("skill_guardian.runtime.inspect_remote", side_effect=AssertionError("full remote check should not run")):
+                    code = entrypoint(
+                        [
+                            "audit",
+                            "--format",
+                            "json",
+                            "--mode",
+                            "quick",
+                            "--roots",
+                            str(root),
+                            "--config-file",
+                            str(config_path),
+                            "--lock-file",
+                            str(lock_path),
+                        ],
+                        stream=stdout,
+                    )
+            self.assertEqual(code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["mode"], "quick")
+            self.assertEqual(payload["reports"][0]["version_gap_level"], "small")
+
+    def test_quick_mode_large_gap_upgrades_to_standard(self) -> None:
+        with self.make_temp_dir() as temp_dir:
+            base = Path(temp_dir)
+            root = base / "skills"
+            skill_dir = root / "zeta"
+            write_skill(skill_dir, name="zeta")
+            config_path = base / "config.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "roots": [],
+                        "upstreams": {"zeta": {"repo": "owner/repo", "path": "skills/zeta", "ref": "main"}},
+                        "policy": "balanced",
+                        "source_allowlist": [],
+                        "source_blocklist": [],
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            skill_id = f"{str(root.resolve()).lower()}::zeta"
+            local_audit = audit_skill_path(skill_dir)
+            lock_path = base / "skills.lock.json"
+            lock_path.write_text(
+                json.dumps(
+                    {
+                        "version": 3,
+                        "skills": {
+                            skill_id: {
+                                "current_tag": "v1.0.0",
+                                "current_commit_date": "2026-01-01T00:00:00Z",
+                                "baseline": {"fingerprint": local_audit.fingerprint},
+                                "last_remote_checked_at": "2026-02-01T00:00:00Z",
+                            }
+                        },
+                    },
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            with patch(
+                "skill_guardian.runtime.inspect_remote_metadata",
+                return_value=RemoteState(
+                    latest_commit="fedcba9876543210",
+                    latest_commit_short="fedcba98",
+                    latest_commit_date="2026-05-03T00:00:00Z",
+                    latest_tag="v2.0.0",
+                ),
+            ):
+                with patch(
+                    "skill_guardian.runtime.inspect_remote",
+                    return_value=RemoteState(
+                        latest_commit="fedcba9876543210",
+                        latest_commit_short="fedcba98",
+                        latest_commit_date="2026-05-03T00:00:00Z",
+                        latest_tag="v2.0.0",
+                        path_audit=local_audit,
+                    ),
+                ) as remote_check:
+                    code = entrypoint(
+                        [
+                            "audit",
+                            "--format",
+                            "json",
+                            "--mode",
+                            "quick",
+                            "--roots",
+                            str(root),
+                            "--config-file",
+                            str(config_path),
+                            "--lock-file",
+                            str(lock_path),
+                        ],
+                        stream=stdout,
+                    )
+            self.assertEqual(code, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["mode"], "standard")
+            self.assertEqual(payload["skills_with_large_version_gap"], ["zeta"])
+            self.assertTrue(remote_check.called)
+
     def test_sync_skill_runtime_script_keeps_runtime_in_sync(self) -> None:
         repo_root = Path(__file__).resolve().parents[1]
         script_path = repo_root / "scripts" / "sync_skill_runtime.py"
@@ -337,7 +488,10 @@ class SkillGuardianTests(unittest.TestCase):
                     runpy.run_path(str(wrapper_path), run_name="__main__")
 
         self.assertEqual(exc.exception.code, 0)
-        self.assertEqual(captured["argv"][:4], ["audit", "--format", "markdown", "--write-lock"])
+        self.assertEqual(
+            captured["argv"][:10],
+            ["audit", "--format", "markdown", "--write-lock", "--mode", "quick", "--max-detailed-skills", "5", "--max-remote-checks", "0"],
+        )
         self.assertIn("--offline", captured["argv"])
 
     def test_skill_wrapper_bundled_mode_invokes_bundled_runtime(self) -> None:
@@ -366,7 +520,10 @@ class SkillGuardianTests(unittest.TestCase):
                         runpy.run_path(str(wrapper_path), run_name="__main__")
 
         self.assertEqual(exc.exception.code, 0)
-        self.assertEqual(captured["argv"][:4], ["audit", "--format", "markdown", "--write-lock"])
+        self.assertEqual(
+            captured["argv"][:10],
+            ["audit", "--format", "markdown", "--write-lock", "--mode", "quick", "--max-detailed-skills", "5", "--max-remote-checks", "0"],
+        )
         self.assertIn("--offline", captured["argv"])
 
 

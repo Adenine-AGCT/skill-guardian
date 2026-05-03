@@ -1,4 +1,4 @@
 interface:
   display_name: "Skill Guardian Skill"
-  short_description: "Inspect local skills and review update trust"
-  default_prompt: "Use Skill Guardian to audit installed skills, explain where they came from, assess update trust and risk, and tell me whether each one should be updated, reviewed, blocked, or left alone."
+  short_description: "Quickly audit local skills before deeper update checks"
+  default_prompt: "Use Skill Guardian to run a lightweight audit of installed skills, explain provenance, drift, and update trust, escalate to deeper checks only when needed, and tell me whether each skill should be updated, reviewed, blocked, or left alone with minimal necessary detail."

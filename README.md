@@ -2,7 +2,7 @@
 
 [中文说明](./README.zh-CN.md)
 
-`Skill Guardian Skill` is a publishable GitHub skill for auditing installed Agent Skills before you update them. It helps you understand where local skills came from, what changed upstream, how risky an update looks, and whether you should update now, review first, block a change, or leave everything alone.
+`Skill Guardian Skill` is an installable GitHub skill for governing local Agent Skills before you update them. It is designed to stay lightweight by default: start with a quick audit, detect provenance and local drift first, and only escalate to deeper remote checks when the evidence justifies it.
 
 ## Install the Skill
 
@@ -12,7 +12,18 @@ Install the published skill with GitHub CLI:
 gh skill install Adenine-AGCT/skill-guardian
 ```
 
-Once installed, use it when you want a safety-first review of local skills instead of blindly updating them.
+Once installed, use it when you want a low-overhead trust and update review for local skills instead of blindly updating them.
+
+## Why It Does Not Waste Tokens
+
+Skill Guardian is intentionally staged:
+
+- `quick` mode is the default path for the published skill
+- local provenance, baseline, and drift checks run before heavier remote analysis
+- deeper checks are only triggered for risky cases such as local drift, blocked history, or large version gaps
+- markdown output stays compact by default and expands only the most important skills
+
+This keeps the skill useful for frequent checks without paying the cost of a full deep audit every time it is triggered.
 
 ## What This Skill Does
 
@@ -20,32 +31,44 @@ After installation, Skill Guardian can help you:
 
 - discover local skills across supported agent roots
 - identify which skills have known upstream provenance
-- compare local versions with newer GitHub versions when available
-- flag risky changes such as script edits, executables, or unknown sources
-- turn audit results into a clear update decision
+- detect local drift from the last trusted baseline
+- estimate whether a local version is far behind GitHub before doing a deeper comparison
+- classify risky changes such as script edits, executables, or unknown sources
+- turn all of that into a clear update decision
 
 ## What You Can Expect
 
-A typical run ends with a concise decision summary such as:
+A typical run starts with a compact summary such as:
 
-- `No action`: nothing needs to be updated right now
-- `Safe to update`: low-risk changes are available
-- `Review required`: one or more updates need human review first
-- `Blocked`: a change looks risky enough that it should not be applied automatically
+```text
+Overall action: Review required
+Mode: quick
+Local drift detected: analytics-skill
+Large version gap: deploy-skill
+Review required: analytics-skill
+```
 
-Each per-skill report also includes:
+The most important per-skill fields include:
 
+- `baseline_status`
+- `version_gap_level`
 - `trust_score`
 - `risk_level`
 - `update_recommendation`
-- `confidence_explainer`
+- `safe_next_step`
 
-## Typical Use Cases
+## Audit Modes
 
-- You have multiple local skills and want a quick inventory before cleaning them up.
-- You want to know whether an installed skill came from a known GitHub source or is locally modified.
-- You want an update recommendation that separates docs-only changes from risky script changes.
-- You want to audit skills on a machine without automatically changing anything.
+Skill Guardian now uses three audit modes:
+
+- `quick`
+  Default for the published skill. Focuses on local inventory, provenance, baseline, and drift. Uses only lightweight remote metadata when needed.
+- `standard`
+  Runs a limited number of deeper remote checks for the most relevant candidates.
+- `deep`
+  Performs full remote comparison and richer explanation across all relevant candidates.
+
+Large version gaps can automatically promote a run from `quick` to `standard`, but they do not automatically mean an update is safe.
 
 ## Local CLI Backend
 
@@ -58,18 +81,25 @@ $env:PYTHONPATH = ".\src"
 python -m skill_guardian audit --offline --write-lock
 ```
 
+Run an explicit quick audit:
+
+```powershell
+$env:PYTHONPATH = ".\src"
+python -m skill_guardian audit --mode quick
+```
+
+Run a deeper audit when you really need it:
+
+```powershell
+$env:PYTHONPATH = ".\src"
+python -m skill_guardian audit --mode deep --max-remote-checks 999
+```
+
 Initialize a user config:
 
 ```powershell
 $env:PYTHONPATH = ".\src"
 python -m skill_guardian config init
-```
-
-List detected skill roots:
-
-```powershell
-$env:PYTHONPATH = ".\src"
-python -m skill_guardian roots list
 ```
 
 ## Discovery and Configuration
@@ -94,20 +124,6 @@ The state directory contains:
 
 Use `SKILL_GUARDIAN_STATE_DIR` to override the default state location.
 
-Custom upstream mappings can be added in `config.json`:
-
-```json
-{
-  "upstreams": {
-    "my-skill": {
-      "repo": "owner/repo",
-      "path": "skills/my-skill",
-      "ref": "main"
-    }
-  }
-}
-```
-
 ## Safety Model
 
 Skill Guardian is intentionally conservative.
@@ -117,6 +133,7 @@ By default it:
 - does not auto-update installed skills
 - does not execute remote scripts while inspecting them
 - treats changes under `scripts/` and executable additions as review-heavy
+- prefers quick audits and escalates only when needed
 - still completes a local audit when remote inspection is unavailable
 - keeps runtime state outside installed skill directories
 
@@ -140,7 +157,7 @@ Then switch into the skill directory and run:
 
 ```powershell
 cd .\skills\skill-guardian
-gh skill publish --tag v0.1.2
+gh skill publish --tag v0.2.0
 gh skill preview Adenine-AGCT/skill-guardian skill-guardian
 ```
 

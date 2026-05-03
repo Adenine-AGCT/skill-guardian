@@ -2,7 +2,7 @@
 
 [English README](./README.md)
 
-`Skill Guardian 技能审计与更新治理` 是一个可安装、可发布的 GitHub Skill，专门用来在更新本地 Agent Skills 之前先做审计和风险判断。它会帮助你看清本地 skills 的来源、上游变化、更新风险，以及当前到底应该直接更新、人工复核、先阻断，还是暂时不动。
+`Skill Guardian 技能审计与更新治理` 是一个可安装、可发布的 GitHub Skill，专门用于在更新本地 Agent Skills 之前先做治理审查。它默认走轻量路径：先做快速审计，优先判断来源、基线和本地漂移，只在确有必要时才升级为更深入的远端检查。
 
 ## 先安装这个 Skill
 
@@ -14,40 +14,61 @@ gh skill install Adenine-AGCT/skill-guardian
 
 安装完成后，就可以在需要审查本地 skills 的时候直接调用它，而不是盲目更新。
 
+## 为什么它不会浪费很多 Tokens
+
+Skill Guardian 的设计重点之一，就是避免每次触发都进入重型审查：
+
+- 发布版 skill 默认运行 `quick` 模式
+- 先做本地 provenance、baseline、drift 检查，再决定是否升级
+- 只有出现高价值信号时，才进入更深的远端比较
+- 默认 markdown 输出是简报，只有重点 skill 才展开细节
+
+也就是说，它的目标不是“每次都最全面”，而是“多数时候足够轻，关键时候足够深”。
+
 ## 这个 Skill 能帮你做什么
 
-安装后，Skill Guardian 主要帮你完成这些判断：
+安装后，Skill Guardian 主要帮助你完成这些判断：
 
 - 盘点本地到底安装了哪些 skills
-- 识别哪些 skills 能追溯到明确的 GitHub 上游
-- 在可联网时对比本地版本和上游新版本
-- 识别脚本变更、可执行文件新增、来源不明等风险信号
-- 把一堆审查结果收束成明确的更新建议
+- 识别哪些 skills 有明确的 GitHub 上游
+- 检测某个 skill 是否偏离了上次可信基线
+- 判断本地版本和 GitHub 版本是否已经拉开较大差距
+- 识别脚本改动、可执行文件新增、来源不明等高风险信号
+- 把这些信息收束成明确的更新建议
 
 ## 使用后你会看到什么
 
-一次典型审查结束后，最重要的是顶部决策摘要，例如：
+一次典型审查结束后，顶部会先给出简洁结论，例如：
 
-- `No action`：当前不需要更新
-- `Safe to update`：存在低风险更新，可以优先更新
-- `Review required`：存在需要人工审查的更新
-- `Blocked`：存在高风险变化，不建议直接应用
+```text
+Overall action: Review required
+Mode: quick
+Local drift detected: analytics-skill
+Large version gap: deploy-skill
+Review required: analytics-skill
+```
 
-每个 skill 的细项结果还会包含：
+每个重点 skill 的结果会重点围绕这些字段展开：
 
+- `baseline_status`
+- `version_gap_level`
 - `trust_score`
 - `risk_level`
 - `update_recommendation`
-- `confidence_explainer`
+- `safe_next_step`
 
-它的定位是“技能审计与更新治理”，不是“自动更新器”。
+## 三层审计模式
 
-## 适合哪些场景
+Skill Guardian 现在使用三层运行模式：
 
-- 你的本地已经装了不少 skills，想先盘点清楚再决定是否更新
-- 你想知道某个 skill 是不是来自可信上游，而不是来源不明的本地副本
-- 你不想盲目覆盖本地 skill，希望先看风险评估和更新建议
-- 你想在离线环境里也先完成本地体检
+- `quick`
+  发布版 skill 的默认模式。优先做本地盘点、来源识别、基线和漂移检查，只在必要时使用轻量远端元数据。
+- `standard`
+  对少量高价值候选项做更深入的远端版本与差异分析。
+- `deep`
+  面向明确要求的全量审计，做完整远端比较和更详细解释。
+
+如果发现某个 skill 的本地版本和 GitHub 版本差距较大，运行会自动从 `quick` 升级到 `standard`。但“差距大”只代表值得重点检查，不代表一定适合立即更新。
 
 ## 本地 CLI 后端
 
@@ -60,18 +81,25 @@ $env:PYTHONPATH = ".\src"
 python -m skill_guardian audit --offline --write-lock
 ```
 
+显式运行轻量模式：
+
+```powershell
+$env:PYTHONPATH = ".\src"
+python -m skill_guardian audit --mode quick
+```
+
+需要完整深审查时再运行：
+
+```powershell
+$env:PYTHONPATH = ".\src"
+python -m skill_guardian audit --mode deep --max-remote-checks 999
+```
+
 初始化用户配置：
 
 ```powershell
 $env:PYTHONPATH = ".\src"
 python -m skill_guardian config init
-```
-
-查看当前发现了哪些 skill 根目录：
-
-```powershell
-$env:PYTHONPATH = ".\src"
-python -m skill_guardian roots list
 ```
 
 ## 发现与配置
@@ -96,20 +124,6 @@ python -m skill_guardian roots list
 
 如果需要自定义状态目录，可以设置环境变量 `SKILL_GUARDIAN_STATE_DIR`。
 
-也可以在 `config.json` 中配置自己的上游映射：
-
-```json
-{
-  "upstreams": {
-    "my-skill": {
-      "repo": "owner/repo",
-      "path": "skills/my-skill",
-      "ref": "main"
-    }
-  }
-}
-```
-
 ## 安全边界
 
 Skill Guardian 默认采取保守策略：
@@ -117,6 +131,7 @@ Skill Guardian 默认采取保守策略：
 - 不自动更新本地 skills
 - 不在审查过程中执行远端脚本
 - 对 `scripts/` 变更和可执行文件新增保持高敏感
+- 默认优先轻量审计，只在必要时升级
 - 即使远端检查失败，也会完成本地审查并明确说明远端状态不可用
 - 运行状态不写回已安装的 skill 目录
 
@@ -140,7 +155,7 @@ python .\scripts\sync_skill_runtime.py --check
 
 ```powershell
 cd .\skills\skill-guardian
-gh skill publish --tag v0.1.2
+gh skill publish --tag v0.2.0
 gh skill preview Adenine-AGCT/skill-guardian skill-guardian
 ```
 
