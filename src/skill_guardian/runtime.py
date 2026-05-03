@@ -1236,6 +1236,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
     update_candidates = [report for report in reports if report["version_status"]["update_available"] is True]
     review_updates = [report for report in reports if report["update_recommendation"] == "review"]
     blocked_updates = [report for report in reports if report["update_recommendation"] == "block"]
+    safe_updates = [report for report in reports if report["update_recommendation"] == "update"]
     already_current = [
         report
         for report in reports
@@ -1263,16 +1264,40 @@ def render_markdown(payload: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "## Action Summary",
+            "",
+        ]
+    )
+    if safe_updates:
+        names = ", ".join(report["name"] for report in safe_updates)
+        lines.append("- Overall action: `Safe to update`")
+        lines.append(f"- Next step: update `{names}` first.")
+    elif review_updates or blocked_updates:
+        lines.append("- Overall action: `Review required`")
+        if blocked_updates:
+            blocked_names = ", ".join(report["name"] for report in blocked_updates)
+            lines.append(f"- Blocked now: `{blocked_names}`")
+        if review_updates:
+            review_names = ", ".join(report["name"] for report in review_updates)
+            lines.append(f"- Review before updating: `{review_names}`")
+        lines.append("- Next step: do not update yet until the flagged skills are reviewed.")
+    else:
+        lines.append("- Overall action: `No action`")
+        lines.append("- Next step: no update is needed right now.")
+
+    lines.extend(
+        [
+            "",
             "## Decision Summary",
             "",
             f"- Already current: `{len(already_current)}`",
-            f"- Safe to update now: `{', '.join(r['name'] for r in update_candidates if r['update_recommendation'] == 'update') or 'none'}`",
+            f"- Safe to update now: `{', '.join(r['name'] for r in safe_updates) or 'none'}`",
             f"- Review before updating: `{', '.join(r['name'] for r in review_updates) or 'none'}`",
             f"- Blocked updates: `{', '.join(r['name'] for r in blocked_updates) or 'none'}`",
         ]
     )
-    if any(report["update_recommendation"] == "update" for report in reports):
-        names = ", ".join(report["name"] for report in reports if report["update_recommendation"] == "update")
+    if safe_updates:
+        names = ", ".join(report["name"] for report in safe_updates)
         lines.append(f"- Recommendation: update `{names}` first.")
     elif review_updates or blocked_updates:
         lines.append("- Recommendation: do not update yet; review the flagged skills first.")

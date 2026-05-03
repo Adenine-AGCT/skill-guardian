@@ -4,11 +4,13 @@ description: Audit local agent skill directories, explain current version proven
 license: MIT
 ---
 
-# Skill Guardian
+# Skill Guardian Skill
 
 ## Overview
 
-Use this skill when the user wants a safety-first review of installed Agent Skills instead of blindly updating them.
+Use this skill when the user wants a dedicated skill for auditing installed Agent Skills before making update decisions.
+
+Skill Guardian is built for skill audit and update governance. It inspects local skills, checks known upstream provenance, reviews update risk, and ends with a clear recommendation about what should be updated, reviewed, blocked, or left alone.
 
 This skill is advisory. It does not auto-update installed skills.
 
@@ -33,6 +35,7 @@ The wrapper performs:
 3. Known-upstream resolution and remote comparison when possible
 4. Trust scoring and update recommendation
 5. A final human-readable summary of what should or should not be updated
+6. An action-oriented conclusion that highlights whether the user should update now, review first, or take no action
 
 ## Output Contract
 

@@ -297,7 +297,8 @@ class SkillGuardianTests(unittest.TestCase):
         zh_readme = Path(__file__).resolve().parents[1] / "README.zh-CN.md"
         self.assertTrue(zh_readme.exists())
         content = zh_readme.read_text(encoding="utf-8")
-        self.assertIn("快速开始", content)
+        self.assertIn("Skill Guardian 技能审计与更新治理", content)
+        self.assertIn("gh skill install Adenine-AGCT/skill-guardian", content)
 
     def test_sync_skill_runtime_script_keeps_runtime_in_sync(self) -> None:
         repo_root = Path(__file__).resolve().parents[1]

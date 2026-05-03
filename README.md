@@ -1,30 +1,55 @@
-# skill-guardian
+# Skill Guardian Skill
 
 [中文说明](./README.zh-CN.md)
 
-`skill-guardian` is a safety-first auditor for Agent Skills. It inspects local skill directories, explains where versions come from, checks known GitHub upstreams when available, and finishes with a clear recommendation about whether any installed skills should be updated now, reviewed first, or blocked.
+`Skill Guardian Skill` is a publishable GitHub skill for auditing installed Agent Skills before you update them. It helps you understand where local skills came from, what changed upstream, how risky an update looks, and whether you should update now, review first, block a change, or leave everything alone.
 
-## Why Use It
+## Install the Skill
 
-Installing or updating skills blindly is convenient, but it also hides risk. `skill-guardian` is designed for people who want visibility before they trust a change.
-
-It helps you:
-
-- discover local skills across supported agent roots
-- understand which skills have known upstream provenance
-- compare local skills with newer GitHub versions when possible
-- flag risky changes such as script edits, executables, or unknown sources
-- get a human-readable decision instead of raw diff noise
-
-## Quick Start
-
-Install and run with GitHub CLI:
+Install the published skill with GitHub CLI:
 
 ```powershell
 gh skill install Adenine-AGCT/skill-guardian
 ```
 
-Install and run from the local repository:
+Once installed, use it when you want a safety-first review of local skills instead of blindly updating them.
+
+## What This Skill Does
+
+After installation, Skill Guardian can help you:
+
+- discover local skills across supported agent roots
+- identify which skills have known upstream provenance
+- compare local versions with newer GitHub versions when available
+- flag risky changes such as script edits, executables, or unknown sources
+- turn audit results into a clear update decision
+
+## What You Can Expect
+
+A typical run ends with a concise decision summary such as:
+
+- `No action`: nothing needs to be updated right now
+- `Safe to update`: low-risk changes are available
+- `Review required`: one or more updates need human review first
+- `Blocked`: a change looks risky enough that it should not be applied automatically
+
+Each per-skill report also includes:
+
+- `trust_score`
+- `risk_level`
+- `update_recommendation`
+- `confidence_explainer`
+
+## Typical Use Cases
+
+- You have multiple local skills and want a quick inventory before cleaning them up.
+- You want to know whether an installed skill came from a known GitHub source or is locally modified.
+- You want an update recommendation that separates docs-only changes from risky script changes.
+- You want to audit skills on a machine without automatically changing anything.
+
+## Local CLI Backend
+
+This repository also ships the CLI and Python backend that powers the published skill.
 
 Run a local audit directly from the repository:
 
@@ -47,39 +72,15 @@ $env:PYTHONPATH = ".\src"
 python -m skill_guardian roots list
 ```
 
-## Typical Use Cases
+## Discovery and Configuration
 
-- You have multiple local skills and want a quick inventory before cleaning them up.
-- You want to know whether an installed skill came from a known GitHub source or is locally modified.
-- You want an update recommendation that distinguishes safe metadata changes from risky script changes.
-- You want to audit skills on a machine without automatically changing anything.
-
-## What the Results Mean
-
-Each skill report includes a few core outputs:
-
-- `trust_score`
-  A 0-100 confidence score that combines source, integrity, behavior, and update signals.
-- `risk_level`
-  A simple label such as `low`, `medium`, `high`, or `critical`.
-- `update_recommendation`
-  One of `update`, `review`, `block`, or `skip`.
-- `confidence_explainer`
-  A short explanation of why the recommendation was made.
-
-The tool is advisory by design. It does not auto-update installed skills.
-
-## Default Discovery
-
-By default, `skill-guardian` looks for skills in:
+By default, the backend looks for skills in:
 
 - `~/.codex/skills`
 - `~/.agents/skills`
 - extra roots declared in `config.json`
 
-## Configuration
-
-Runtime state is stored outside installed skill folders.
+Runtime state is stored outside installed skill folders:
 
 - Windows: `%APPDATA%/skill-guardian/`
 - macOS: `~/Library/Application Support/skill-guardian/`
@@ -107,21 +108,9 @@ Custom upstream mappings can be added in `config.json`:
 }
 ```
 
-## Using the Bundled Skill
-
-This repository also includes a publishable Agent Skill under `skills/skill-guardian/`.
-
-When triggered as a skill, it runs the same audit engine and produces a user-facing summary instead of raw machine output. The bundled skill is useful when you want the audit experience inside a skills-capable agent rather than from the CLI.
-
-Install the published skill with:
-
-```powershell
-gh skill install Adenine-AGCT/skill-guardian
-```
-
 ## Safety Model
 
-`skill-guardian` is intentionally conservative.
+Skill Guardian is intentionally conservative.
 
 By default it:
 
@@ -131,9 +120,9 @@ By default it:
 - still completes a local audit when remote inspection is unavailable
 - keeps runtime state outside installed skill directories
 
-## Development and Publishing
+## Development and Release
 
-For contributors and maintainers, a minimal verification flow is:
+Minimal verification flow:
 
 ```powershell
 python -m unittest discover -s .\tests -v
@@ -151,8 +140,8 @@ Then switch into the skill directory and run:
 
 ```powershell
 cd .\skills\skill-guardian
-gh skill publish --tag v0.1.1
-gh skill preview Adenine-AGCT/skill-guardian skill-guardian@v0.1.1
+gh skill publish --tag v0.1.2
+gh skill preview Adenine-AGCT/skill-guardian skill-guardian
 ```
 
-After publishing, add a GitHub tag protection ruleset for `v*` tags in repository Settings.
+After publishing, keep `v*` tags protected with a GitHub tag ruleset.
